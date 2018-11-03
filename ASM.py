@@ -26,8 +26,10 @@ def centroidSize(X, centroidFun=centerOfGravity):
 
 
 if __name__ == '__main__':
+  # Choose size metric and centroid function
   sizeFun = sizeFrobenious
   centroidFun = centerOfGravity
+
   shapes = []
   tmpshapes = []
 

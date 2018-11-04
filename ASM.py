@@ -31,14 +31,26 @@ def centroidSize(X, centroidFun=centerOfGravity):
   center = centroidFun(X)
   return np.sum(np.sqrt(np.sum(np.square(X - center), axis = 1)), axis = 0)
 
-def toPCAform(shapes):
-  varShapes = []
+def tangentSpaceProjection(shapes, mean):
+  meanSize = np.sum(mean*mean)
+  projections = []
 
-  # reshape shapes to (x1, x2, ..., y1, y2, ...) to avoid tensor SVD when doing PCA
   for shape in shapes:
-    varShapes.append(shape.T.reshape(-1,1))
+    alpha = meanSize/np.sum(mean*shape)
+    projection = alpha * shape
+    projections.append(projection)
+  return projections
 
-  return varShapes
+
+def toPCAform(shape):
+  # reshape to (x1, x2, ..., y1, y2, ...) to avoid tensor SVD when doing PCA
+  return shape.T.reshape(-1,1)
+
+def toNormalform(shape):
+  # reshape to (m x 2), for m landmarks
+  return shape.reshape(2,-1).T
+
+
 
 
 if __name__ == '__main__':
@@ -77,9 +89,7 @@ if __name__ == '__main__':
 
   # Calculate mean iteratively
   for iteration in range(10):
-    tmpshapes = []
-
-    for shape in shapes:
+    for i, shape in enumerate(shapes):
       # Rotate shape to mean
       # SVD
       corelationMatrix = mean.T.dot(shape)
@@ -87,13 +97,58 @@ if __name__ == '__main__':
 
       # Rotate
       rotation = U.dot(V.T)
-      tmpshapes.append(rotation.dot(shape.T).T)
+      shapes[i] = rotation.dot(shape.T).T
 
     # Calculte mean, and normalize
-    mean = sum(tmpshapes)/len(tmpshapes)
+    mean = sum(shapes)/len(shapes)
     mean /= sizeFun(mean)
 
   # Display mean shape
-  plt.plot(*mean.T)
-  plt.scatter(*centroidFun(mean).T)
-  plt.show()
+  # plt.plot(*mean.T)
+  # plt.scatter(*centroidFun(mean).T)
+  # plt.show()
+
+  # Ravel mean and shapes to vectors for PCA
+  mean2 = toPCAform(mean)
+
+  shapes2 = []
+  for shape in shapes:
+    shapes2.append(toPCAform(shape))
+
+
+  # Shift shapes to tangent space:
+  shapes2 = tangentSpaceProjection(shapes2, mean2)
+
+  # prepare for covariance calculation
+  N = mean2.shape[0]
+  covarianceX = np.zeros(shape = (N, N))
+
+  # Calculate shape covariance
+  for shape2 in shapes2:
+    diff = shape2 - mean2
+    covarianceX += diff.dot(diff.T)
+  covarianceX /= N
+
+  # Calculate eigenbasis and eigenvalue
+  U, covariance, Vt = np.linalg.svd(covarianceX)
+
+  # Standard deviations for each mode
+  sigma = np.sqrt(covariance).reshape(-1,1)
+
+  # Display a few shapes of +/- sigma for first mode
+  b = sigma*0
+  for i in range(9):
+    b[0] = sigma[0]*0.25*i - sigma[0]
+    x = mean2 + U.dot(b)
+    plt.plot(*toNormalform(mean2).T)
+    plt.plot(*toNormalform(x).T)
+    plt.show()
+
+  # Display a few shapes of +/- sigma for second mode
+  b = sigma*0
+  for i in range(9):
+    b[1] = sigma[1]*0.25*i - sigma[1]
+    x = mean2 + U.dot(b)
+    plt.plot(*toNormalform(mean2).T)
+    plt.plot(*toNormalform(x).T)
+    plt.show()

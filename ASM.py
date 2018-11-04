@@ -1,3 +1,10 @@
+# Implementing ASM algorithm
+#
+# references:
+#
+# Stegmann, Mikkel B, and David Delgado Gomez. n.d. “A Brief Introduction to Statistical Shape Analysis,” 15.
+# Cootes, Tim. “An Introduction to Active Shape Models.” Image Processing and Analysis, January 1, 2000
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -23,6 +30,15 @@ def sizeFrobenious(X, centroidFun=centerOfGravity):
 def centroidSize(X, centroidFun=centerOfGravity):
   center = centroidFun(X)
   return np.sum(np.sqrt(np.sum(np.square(X - center), axis = 1)), axis = 0)
+
+def toPCAform(shapes):
+  varShapes = []
+
+  # reshape shapes to (x1, x2, ..., y1, y2, ...) to avoid tensor SVD when doing PCA
+  for shape in shapes:
+    varShapes.append(shape.T.reshape(-1,1))
+
+  return varShapes
 
 
 if __name__ == '__main__':
@@ -60,7 +76,7 @@ if __name__ == '__main__':
 
 
   # Calculate mean iteratively
-  for i in range(10):
+  for iteration in range(10):
     tmpshapes = []
 
     for shape in shapes:
@@ -77,7 +93,7 @@ if __name__ == '__main__':
     mean = sum(tmpshapes)/len(tmpshapes)
     mean /= sizeFun(mean)
 
-  # Display mean shape every iteration
+  # Display mean shape
   plt.plot(*mean.T)
   plt.scatter(*centroidFun(mean).T)
   plt.show()
